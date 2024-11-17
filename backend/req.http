@@ -1,0 +1,104 @@
+###register
+post http://localhost:1234/user-api/registration
+Content-Type: application/json
+
+{
+    "name":"sunny",
+    "email":"sunny@gmail.com",
+    "password":"sunny"
+}
+
+###login
+post http://localhost:1234/user-api/login
+Content-Type: application/json
+
+{
+    "email":"sunny@gmail.com",
+    "password":"sunny"
+}
+
+###login(admin)
+post http://localhost:1234/user-api/login
+Content-Type: application/json
+
+{
+    "email":"admin@rawsbe.in",
+    "password":"admin123"
+}
+
+###get all users(for admin)
+get http://localhost:1234/user-api/users
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJhZG1pbiIsInJvbGUiOiJhZG1pbiIsIm5hbWUiOiJhZG1pbiIsImlhdCI6MTczMTg0NTk5MCwiZXhwIjoxNzMyMDE4NzkwfQ.RP-TudlgNuc_60ZLueDuQcVI4V6CVVmJMm28ZLCk4b4
+
+###display all blogs
+get http://localhost:1234/user-api/blogs
+
+###display all blogs by userId
+get http://localhost:1234/user-api/blogs/user/USR7865
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJVU1I3ODY1Iiwicm9sZSI6InVzZXIiLCJuYW1lIjoic3VubnkiLCJpYXQiOjE3MzE4MTQ0NDgsImV4cCI6MTczMTk4NzI0OH0.HcNrhxpt_99dBLKpgMhUOX_c-h_xzMwc1fJjzHWa1gI
+
+###blog by blogID
+get http://localhost:1234/user-api/blogs/BLG6350
+
+###editing user Profile
+put http://localhost:1234/user-api/edituser/USR7865
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJVU1I3ODY1Iiwicm9sZSI6InVzZXIiLCJuYW1lIjoic3VubnkiLCJpYXQiOjE3MzE3NTU0MjQsImV4cCI6MTczMTkyODIyNH0.wVlRe994zTN7MqNzhaDLKm-BdrumGETkQ0VplYlGdzE
+
+{
+    "name":"sunny",
+    "email":"sunny1@gmail.com",
+    "password":"sunny"
+}
+
+### to write new BLog
+POST http://localhost:1234/user-api/new-blog
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJVU1I3ODY1Iiwicm9sZSI6InVzZXIiLCJuYW1lIjoic3VubnkiLCJpYXQiOjE3MzE3NTU0MjQsImV4cCI6MTczMTkyODIyNH0.wVlRe994zTN7MqNzhaDLKm-BdrumGETkQ0VplYlGdzE
+
+{
+    "movieId": "Mov9011",
+    "blogTitle": "Blog Title-3",
+    "blogContent": "The science behind Inception's technology"
+}
+
+
+
+### to get all movies
+get http://localhost:1234/user-api/movies
+
+### to write a comment to that specific blog
+post http://localhost:1234/user-api/comment/BLG6350
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJVU1I3ODY1Iiwicm9sZSI6InVzZXIiLCJuYW1lIjoic3VubnkiLCJpYXQiOjE3MzE4MTQ0NDgsImV4cCI6MTczMTk4NzI0OH0.HcNrhxpt_99dBLKpgMhUOX_c-h_xzMwc1fJjzHWa1gI
+
+{
+    "content":"Nice Blog-2 , my second comment"
+}
+
+###to get commenst on specific blogId
+get http://localhost:1234/user-api/comments/BLG6350
+
+### to delete his own comment by commentID
+delete http://localhost:1234/user-api/comment/CMT2095
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJVU1I3ODY1Iiwicm9sZSI6InVzZXIiLCJuYW1lIjoic3VubnkiLCJpYXQiOjE3MzE4NTAzMTYsImV4cCI6MTczMjAyMzExNn0.0uATNgPVA_GDFhZj14ZmaxHQKi1LiIsBwHvcGtm5jfI
+
+###to add new movies
+post http://localhost:1234/user-api/new-movie
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJhZG1pbiIsInJvbGUiOiJhZG1pbiIsIm5hbWUiOiJhZG1pbiIsImlhdCI6MTczMTc5Mzk4OCwiZXhwIjoxNzMxOTY2Nzg4fQ.mBbtrvUGTdCkNlSkqPA28zVohJLq1L-Dp20IX1oOsQc
+
+{
+    "movieName":"rdn",
+    "year":2010,
+    "genres": "Gen0345, Gen5423, Gen1234",
+    "rating": 4.5,
+    "posterURL":"https://m.media-amazon.com/images/M/MV5BMjExMjkwNTQ0Nl5BMl5BanBnXkFtZTcwNTY0OTk1Mw@@._V1_.jpg",
+    "director":"Nolon Mowa"
+}
+
+
+
+###to delete user
+DELETE  http://localhost:1234/user-api/deleteuser/USR2482
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJhZG1pbiIsInJvbGUiOiJhZG1pbiIsIm5hbWUiOiJhZG1pbiIsImlhdCI6MTczMTg0NTk5MCwiZXhwIjoxNzMyMDE4NzkwfQ.RP-TudlgNuc_60ZLueDuQcVI4V6CVVmJMm28ZLCk4b4
