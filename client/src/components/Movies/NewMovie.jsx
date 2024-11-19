@@ -6,7 +6,6 @@ export default function NewMovie() {
   const [movieName, setmovieName] = useState("");
   const [year, setYear] = useState("");
   const [genres, setGenres] = useState("");
-  const [rating, setRating] = useState(0);
   const [director, setDirector] = useState("");
   const [posterURL, setPosterUrl] = useState("");
   const [message, setMessage] = useState("");
@@ -23,7 +22,6 @@ export default function NewMovie() {
           movieName,
           year,
           genres,
-          rating,
           director,
           posterURL,
         },
@@ -34,7 +32,6 @@ export default function NewMovie() {
       setmovieName("");
       setYear("");
       setGenres("");
-      setRating(0);
       setDirector("");
       setPosterUrl("");
       navigate("/movies");
@@ -89,20 +86,7 @@ export default function NewMovie() {
             required
           />
         </div>
-        <div>
-          <label>Rating</label>
-          <input
-            type="range"
-            name="rating"
-            value={rating}
-            min="0"
-            max="10"
-            step="0.1"
-            onChange={(e) => setRating(e.target.value)}
-            className="w-full"
-          />
-          <span>{rating}</span>
-        </div>
+        
         <div>
           <label>Poster URL</label>
           <input
