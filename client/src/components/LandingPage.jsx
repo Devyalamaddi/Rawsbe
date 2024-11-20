@@ -14,7 +14,7 @@ export default function LandingPage() {
           <p className="text-lg text-gray-200">
             A platform for movie enthusiasts to explore new films, write engaging blogs, and connect with like-minded fans.
           </p>
-          <div className="space-x-4 flex flex-wrap justify-center">
+          <div className="space-x-4 flex flex-wrap sm:space-y-0 space-y-8 justify-center">
             <Link
               to="/blogs"
               className="px-6 py-3 bg-yellow-300 text-indigo-800 font-bold rounded-lg hover:bg-yellow-400 transition duration-200"

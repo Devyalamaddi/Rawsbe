@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import axios from "axios";
 import BlogCard from "../Blogs/BlogCard";
+import { TbHttpDelete } from "react-icons/tb";
 
 export default function Dashboard() {
   const [userBlogs, setUserBlogs] = useState([]);
@@ -140,9 +141,9 @@ export default function Dashboard() {
                           <td className="px-6 py-4 text-right">
                             <button
                               onClick={() => deleteUser(user[0])}
-                              className="text-red-600 hover:text-red-900 font-medium"
+                              className="bg-red-500/60 px-4 py-2 rounded text-white ease-in-out transition-colors duration-300 hover:bg-black hover:text-red-600/90"
                             >
-                              Delete
+                              <TbHttpDelete />
                             </button>
                           </td>
                         </tr>
