@@ -17,15 +17,14 @@ const adminCredentials = {
     password: bcryptjs.hashSync(process.env.ADMIN_PASS, 10)
 };
 
-
-//to generate unique user ID
+//To generate unique user ID
 function generateUniqueUserId() {
     const prefix = "USR";
     const randomPart = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
     const userId = `${prefix}${randomPart}`;
     return userId;
 }
-// User Registration(D)(D)
+//User Registration(d)(D)
 userApp.post('/registration', expressAsyncHandler(async (req, res) => {
     const newUser = req.body;
     // console.log(newUser);
@@ -76,7 +75,7 @@ userApp.post('/registration', expressAsyncHandler(async (req, res) => {
     }
 }));
 
-//user login (d)(D)
+//User login (d)(D)
 userApp.post('/login', expressAsyncHandler(async(req,res)=>{
     const newUser = req.body;
     // console.log(newUser)
@@ -131,17 +130,15 @@ userApp.post('/login', expressAsyncHandler(async(req,res)=>{
         }
     }
 
-}))
+}));
 
-//to get all blogs(D)(D)
-userApp.get(
-    '/blogs',
-    expressAsyncHandler(async (req, res) => {
+//To get all blogs(d)(D)
+userApp.get('/blogs',expressAsyncHandler(async (req, res) => {
       let connection;
       try {
         connection = await getConnection(); // Get connection to the DB
         const result = await connection.execute(
-          'SELECT blogid, movieid, userid, title, content, dateposted FROM MovieBlog',
+          'SELECT * FROM MovieBlog',
           [],
           { outFormat: require('oracledb').OUT_FORMAT_OBJECT } // To get data as objects
         );
@@ -173,10 +170,9 @@ userApp.get(
           await connection.close();
         }
       }
-    })
-  );
+}));
 
-// to see blogs by a user (D)(D)
+//To see blogs by a user (d)(D)
 userApp.get('/blogs/user/:userId',verifyToken,expressAsyncHandler(async(req,res)=>{
     const userId = req.params.userId;
     let connection;
@@ -208,9 +204,9 @@ userApp.get('/blogs/user/:userId',verifyToken,expressAsyncHandler(async(req,res)
             await connection.close();
         }
     }
-}))
+}));
 
-//to see specific blog with blogId(d)(D)
+//To see specific blog with blogId(d)(D)
 userApp.get("/blogs/:blogID", expressAsyncHandler(async (req, res) => {
     const blogID = req.params.blogID;
 
@@ -231,6 +227,7 @@ userApp.get("/blogs/:blogID", expressAsyncHandler(async (req, res) => {
 
         // Process rows to read the CLOB content
         const blog = await Promise.all(result.rows.map(async (row) => {
+            // Process CLOB data for CONTENT
             if (row.CONTENT) {
                 row.CONTENT = await new Promise((resolve, reject) => {
                     let clobData = '';
@@ -242,6 +239,33 @@ userApp.get("/blogs/:blogID", expressAsyncHandler(async (req, res) => {
                     row.CONTENT.on('error', (err) => reject(err));
                 });
             }
+
+            // Process CLOB data for FIRSTHALFREVIEW
+            if (row.FIRSTHALFREVIEW) {
+                row.FIRSTHALFREVIEW = await new Promise((resolve, reject) => {
+                    let clobData = '';
+                    row.FIRSTHALFREVIEW.setEncoding('utf8'); // Set encoding to read as text
+                    row.FIRSTHALFREVIEW.on('data', (chunk) => {
+                        clobData += chunk;
+                    });
+                    row.FIRSTHALFREVIEW.on('end', () => resolve(clobData));
+                    row.FIRSTHALFREVIEW.on('error', (err) => reject(err));
+                });
+            }
+
+            // Process CLOB data for SECONDHALFREVIEW
+            if (row.SECONDHALFREVIEW) {
+                row.SECONDHALFREVIEW = await new Promise((resolve, reject) => {
+                    let clobData = '';
+                    row.SECONDHALFREVIEW.setEncoding('utf8'); // Set encoding to read as text
+                    row.SECONDHALFREVIEW.on('data', (chunk) => {
+                        clobData += chunk;
+                    });
+                    row.SECONDHALFREVIEW.on('end', () => resolve(clobData));
+                    row.SECONDHALFREVIEW.on('error', (err) => reject(err));
+                });
+            }
+
             return row;
         }));
 
@@ -261,28 +285,50 @@ userApp.get("/blogs/:blogID", expressAsyncHandler(async (req, res) => {
     }
 }));
 
-//to see the commenst on the specific blogId(D)(D)
-userApp.get('/comments/:blogID', expressAsyncHandler(async(req, res)=>{
+// Get comments for a specific blog by blogID(D)(D)
+userApp.get('/comments/:blogID', expressAsyncHandler(async (req, res) => {
     const blogID = req.params.blogID;
     if (!blogID) {
         return res.status(400).send({ message: "blogID parameter is missing" });
-        }
+    }
     let connection;
     try {
         connection = await getConnection();
-        const result = await connection.execute('select * from userComments where blogid = :blogID',{blogID:blogID},{autoCommit:true, outFormat: OracleDB.OUT_FORMAT_OBJECT});
-        res.send({message:"comments on specific blog", payload:result.rows})
-    }catch(err){
-        console.log("error while getting comments", err.message);
-        res.send({message:err.message});
-    }finally{
-        if (connection){
+        const result = await connection.execute(
+            'SELECT COMMENTID, USERID, BLOGID, CONTENT, TO_CHAR(DATEPOSTED, \'YYYY-MM-DD\') AS DATEPOSTED FROM userComments WHERE blogid = :blogID',
+            { blogID },
+            { autoCommit: true, outFormat: OracleDB.OUT_FORMAT_OBJECT }
+        );
+        const comments = await Promise.all(
+            result.rows.map(async (row) => {
+              if (row.CONTENT && typeof row.CONTENT.setEncoding === 'function') {
+                row.CONTENT = await new Promise((resolve, reject) => {
+                  let clobData = '';
+                  row.CONTENT.setEncoding('utf8'); // Set encoding to read as text
+                  row.CONTENT.on('data', (chunk) => {
+                    clobData += chunk;
+                  });
+                  row.CONTENT.on('end', () => resolve(clobData));
+                  row.CONTENT.on('error', (err) => reject(err));
+                });
+              }
+              return row;
+            })
+          );
+        res.send({ message: "Comments on specific blog", payload: comments });
+    } catch (err) {
+        console.error("Error while getting comments:", err.message);
+        res.status(500).send({ message: err.message });
+    } finally {
+        if (connection) {
             await connection.close();
         }
     }
-}))
+}));
 
-//to edit user themselves(d)
+
+
+//To edit user themselves(d)(D)
 userApp.put('/edituser/:userId',expressAsyncHandler(async(req,res)=>{
     const userId = req.params.userId;
     let connection;
@@ -306,29 +352,34 @@ userApp.put('/edituser/:userId',expressAsyncHandler(async(req,res)=>{
     }finally{
         await connection.close();
     }
-}))
+}));
 
-//function to generate unique blog ID
+//Function to generate unique blog ID
 function generateUniqueBlogId() {
     const prefix = "BLG";
     const randomPart = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
     const userId = `${prefix}${randomPart}`;
     return userId;
 }
-//write a blog into movieblog(d)(D)
+//Write a blog into movieblog(d)(D)
 userApp.post("/new-blog",verifyToken, expressAsyncHandler(async(req,res)=>{
     const newBlog = req.body;
     // console.log(newBlog)
     let connection;
     try {
         connection = await getConnection(); // Get connection to the DB
-        const result = await connection.execute(`INSERT INTO MovieBlog VALUES (:blogId,:movieID,:userId,:blogTitle,:blogContent,:dateposted) `,{
+        const result = await connection.execute(`INSERT INTO MovieBlog VALUES (:blogId,:movieID,:userId,:blogTitle,:blogContent,:dateposted,:fhRa,:shRa, :oar, :fhr, :shr) `,{
             blogId:generateUniqueBlogId(),
             userId:newBlog.userId,
             movieID:newBlog.movieId,
             blogTitle:newBlog.blogTitle,
             blogContent:newBlog.blogContent,
-            dateposted:new Date()
+            dateposted:new Date(),
+            fhRa:newBlog.firstHalfRating,
+            shRa:newBlog.secondHalfRating,
+            oar:newBlog.overallRating,
+            fhr:newBlog.firstHalfReview,
+            shr:newBlog.secondHalfReview
         },{autoCommit:true});
        
         res.send({message:"Blog posted successfully!",payload:newBlog});
@@ -342,9 +393,9 @@ userApp.post("/new-blog",verifyToken, expressAsyncHandler(async(req,res)=>{
             await connection.close();
         }
     }
-}))
+}));
 
-//to handle search(d)
+//To handle search(d)
     //to get all genres
     userApp.get("/genres",expressAsyncHandler(async(req,res)=>{
         let connection;
@@ -361,7 +412,6 @@ userApp.post("/new-blog",verifyToken, expressAsyncHandler(async(req,res)=>{
             }
         }
     }));
-
     //to get all movies(d)(D)
     userApp.get('/movies', expressAsyncHandler(async (req, res) => {
         let connection;
@@ -401,14 +451,14 @@ userApp.post("/new-blog",verifyToken, expressAsyncHandler(async(req,res)=>{
         }
     }));
     
-//to generate unique Comment ID
+//To generate unique Comment ID
 function generateUniqueCommentId() {
     const prefix = "CMT";
     const randomPart = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
     const userId = `${prefix}${randomPart}`;
     return userId;
 }
-//to write a comment to that specific blog(d)(D)
+//To write a comment to that specific blog(d)(D)
 userApp.post("/comment/:blogID", verifyToken, expressAsyncHandler(async (req, res) => {
     const blogID = req.params.blogID;
     const userCommentObj = req.body;
@@ -419,11 +469,7 @@ userApp.post("/comment/:blogID", verifyToken, expressAsyncHandler(async (req, re
     try {
         connection = await getConnection();
         
-        const query = `
-            INSERT INTO userComments (commentID, userID, blogID, content, dateposted)
-            VALUES (:commentID, :userID, :blogID, :content, TO_DATE(:dateposted, 'YYYY-MM-DD HH24:MI:SS'))
-        `;
-        
+        const query = `INSERT INTO userComments (commentID, userID, blogID, content, dateposted) VALUES (:commentID, :userID, :blogID, :content, TO_DATE(:dateposted, 'YYYY-MM-DD HH24:MI:SS'))`;
         const result = await connection.execute(query, {
             commentID: commentID,
             userID: userCommentObj.userId,
@@ -444,7 +490,7 @@ userApp.post("/comment/:blogID", verifyToken, expressAsyncHandler(async (req, re
     }
 }));
 
-//to delete comment written by user by commentId that is commented by this user(d)(d)
+//To delete comment written by user by commentId that is commented by this user(d)(D)
 userApp.delete("/comment/:commentID", verifyToken, expressAsyncHandler(async (req, res) => {
     const commentID = req.params.commentID;
     const userID = req.body.userId; // Assume userId is sent in the request body
@@ -472,34 +518,50 @@ userApp.delete("/comment/:commentID", verifyToken, expressAsyncHandler(async (re
     }
 }));
 
+// Get user by userID(D)(D)
+userApp.get("/user/:userId",expressAsyncHandler(async (req, res) => {
+    const userId = req.params.userId;
+    let connection;
+    try {
+        connection = await getConnection();
+        const result = await connection.execute(
+            `SELECT name FROM users WHERE userid = :1`,
+            [userId],
+            { outFormat: OracleDB.OUT_FORMAT_ARRAY }
+        );
+        res.send({ payload: result.rows[0] });
+    } catch (err) {
+        console.error("Error fetching user:", err.message);
+        res.status(500).send({ message: err.message });
+    } finally {
+        if (connection) {
+            await connection.close();
+        }
+    }
+}));
 
 
-
-
-//to verify is the user a ADMIN
+//To verify is the user a ADMIN
 function isAdmin(req,res,next){
     if (req.role!=='admin'){
         res.send({message:"Please login as Admin."});
     }
     next();
 }
-// Generate unique Movie ID
+//Generate unique Movie ID
 function generateUniqueMovieId() {
     const prefix = "Mov";
     const randomPart = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
     const movieId = `${prefix}${randomPart}`;
     return movieId;
 }
-// Add movies (only for admin)(d)(d)
+//Add movies (only for admin)(d)(D)
 userApp.post("/new-movie", verifyToken,isAdmin, expressAsyncHandler(async (req, res) => {
-    const newMovie = req.body; // Corrected usage of req.body
-    // console.log(newMovie);
+    const newMovie = req.body;
     let connection;
 
     try {
         connection = await getConnection();
-        
-
         //check for duplicate movie insertion
         const check = await connection.execute(`SELECT * FROM movie WHERE moviename = :title`, {title:newMovie.movieName},{autoCommit:true});
         if(check.rows.length>0){
@@ -507,14 +569,13 @@ userApp.post("/new-movie", verifyToken,isAdmin, expressAsyncHandler(async (req, 
         }
 
         const result = await connection.execute(
-            `INSERT INTO Movie (movieId, movieName, year, rating, posterURL, director, genres) 
-             VALUES (:movieId, :movieName, :year, :rating, :posterURL, :director, :genres)`, // Added closing parenthesis
+            `INSERT INTO Movie (movieId, movieName, year, posterURL, director, genres) 
+             VALUES (:movieId, :movieName, :year, :posterURL, :director, :genres)`, 
             {
                 movieId: generateUniqueMovieId(),
                 movieName: newMovie.movieName,
                 year: Number(newMovie.year),
                 genres: newMovie.genres,
-                rating: newMovie.rating,
                 posterURL: newMovie.posterURL,
                 director: newMovie.director
             },
@@ -533,7 +594,7 @@ userApp.post("/new-movie", verifyToken,isAdmin, expressAsyncHandler(async (req, 
     }
 }));
 
-//get all the users if admin is logged
+//Get all the users if admin is logged
 userApp.get("/users", verifyToken, isAdmin, expressAsyncHandler(async (req, res)=>{
     let connection;
     try{
@@ -548,9 +609,9 @@ userApp.get("/users", verifyToken, isAdmin, expressAsyncHandler(async (req, res)
             await connection.close();
         }
     }
-}))
+}));
 
-//deleting an user by admin using user ID (only for admin)(d)
+//Deleting an user by admin using user ID (only for admin)(d)
 userApp.delete("/deleteuser/:userId", verifyToken, isAdmin, expressAsyncHandler(async (req, res) => {
     const userId = req.params.userId;
     let connection;
