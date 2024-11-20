@@ -138,7 +138,7 @@ userApp.get('/blogs',expressAsyncHandler(async (req, res) => {
       try {
         connection = await getConnection(); // Get connection to the DB
         const result = await connection.execute(
-          'SELECT * FROM MovieBlog',
+          `SELECT * FROM MovieBlog where status = 'T' `,
           [],
           { outFormat: require('oracledb').OUT_FORMAT_OBJECT } // To get data as objects
         );
@@ -336,15 +336,11 @@ userApp.put('/edituser/:userId',expressAsyncHandler(async(req,res)=>{
         connection = await getConnection(); // Get connection to the DB
         const {name,email,password} = req.body;
         const hashedPassword = await bcryptjs.hash(password, 10);
-        const query = `UPDATE users SET name = :name, email = :email, password = :hashedPassword WHERE userId = :userId`;
-        const values = {
-            name:name, email:email, hashedPassword:hashedPassword, userId:userId};
-
-        const result = await connection.execute(`UPDATE users SET name = :name, email = :email, password = :hashedPassword WHERE userId = :userId`,
+        await connection.execute(`UPDATE users SET name = :name, email = :email, password = :hashedPassword WHERE userId = :userId`,
             {
                 name:name, email:email, hashedPassword:hashedPassword, userId:userId
             },{autoCommit:true});
-        // console.log(result)
+        
         res.send({message:"User updated"});
     }catch(err){
         console.error(err);
@@ -368,7 +364,7 @@ userApp.post("/new-blog",verifyToken, expressAsyncHandler(async(req,res)=>{
     let connection;
     try {
         connection = await getConnection(); // Get connection to the DB
-        const result = await connection.execute(`INSERT INTO MovieBlog VALUES (:blogId,:movieID,:userId,:blogTitle,:blogContent,:dateposted,:fhRa,:shRa, :oar, :fhr, :shr) `,{
+        await connection.execute(`INSERT INTO MovieBlog VALUES (:blogId,:movieID,:userId,:blogTitle,:blogContent,:dateposted,:fhRa,:shRa, :oar, :fhr, :shr) `,{
             blogId:generateUniqueBlogId(),
             userId:newBlog.userId,
             movieID:newBlog.movieId,
@@ -470,7 +466,7 @@ userApp.post("/comment/:blogID", verifyToken, expressAsyncHandler(async (req, re
         connection = await getConnection();
         
         const query = `INSERT INTO userComments (commentID, userID, blogID, content, dateposted) VALUES (:commentID, :userID, :blogID, :content, TO_DATE(:dateposted, 'YYYY-MM-DD HH24:MI:SS'))`;
-        const result = await connection.execute(query, {
+        await connection.execute(query, {
             commentID: commentID,
             userID: userCommentObj.userId,
             blogID: blogID,
@@ -493,13 +489,12 @@ userApp.post("/comment/:blogID", verifyToken, expressAsyncHandler(async (req, re
 //To delete comment written by user by commentId that is commented by this user(d)(D)
 userApp.delete("/comment/:commentID", verifyToken, expressAsyncHandler(async (req, res) => {
     const commentID = req.params.commentID;
-    const userID = req.body.userId; // Assume userId is sent in the request body
     let connection;
     try {
         connection = await getConnection();
         const result = await connection.execute(
-            `DELETE FROM userComments WHERE commentID = :commentID AND userID = :userID`,
-            { commentID, userID }, // Bind variables
+            `DELETE FROM userComments WHERE commentID = :commentID`,
+            { commentID},
             { autoCommit: true }
         );
 
@@ -568,7 +563,7 @@ userApp.post("/new-movie", verifyToken,isAdmin, expressAsyncHandler(async (req, 
             return res.send({message:"Movie already exists."});
         }
 
-        const result = await connection.execute(
+        await connection.execute(
             `INSERT INTO Movie (movieId, movieName, year, posterURL, director, genres) 
              VALUES (:movieId, :movieName, :year, :posterURL, :director, :genres)`, 
             {
@@ -653,5 +648,85 @@ userApp.delete("/deleteuser/:userId", verifyToken, isAdmin, expressAsyncHandler(
         }
     }
 }));
+
+function generateUniqueVoteId() {
+    const prefix = "VOT";
+    const randomPart = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+    return `${prefix}${randomPart}`;
+}
+
+userApp.post("/vote", verifyToken, expressAsyncHandler(async (req, res) => {
+    console.log("Received request at /vote:", req.body);
+    const { voteType, blogId, userId } = req.body;
+    console.log("Received request at /vote:2", req.body);
+    if (!voteType || !blogId || !userId) {
+        return res.status(400).send({ error: "Missing required fields" });
+    }
+    console.log("Received request at /vote:3", req.body);
+    const voteId = generateUniqueVoteId();
+    console.log("Received request at /vote:4", req.body);
+    let connection;
+    try {
+        connection = await getConnection();
+        console.log("Received request at /vote:5", req.body);
+        
+        // Check if user already voted
+        const existingVote = await connection.execute(
+            `SELECT * FROM blogVotes WHERE userId = :userId AND blogId = :blogId`,
+            { userId, blogId }
+        );
+        console.log("Received request at /vote:6", req.body);
+        if (existingVote.rows.length > 0) {
+            return res.status(400).send({ message: "User has already voted" });
+        }
+        console.log("Received request at /vote:7", req.body);
+        // Insert vote and update count
+        await connection.execute(
+            `INSERT INTO blogVotes (voteId, blogId, userId) VALUES (:voteId, :blogId, :userId)`,
+            { voteId, blogId, userId }
+        );
+        console.log("Received request at /vote:8", req.body);
+
+        const updateField = voteType === 'U' ? "upvotes" : "downvotes";
+        await connection.execute(
+            `UPDATE movieblog SET ${updateField} = ${updateField} + 1 WHERE blogId = :blogId`,
+            { blogId }
+        );
+        console.log("Received request at /vote:9", req.body);
+
+        await connection.commit();
+        res.send({ message: "Vote Casted" });
+    } catch (err) {
+        console.error("Error during voting:", err.message);
+        res.status(500).send({ error: "Error voting" });
+    } finally {
+        if (connection) {
+            await connection.close();
+        }
+    }
+}));
+
+
+// Get upvotes for a blog by ID
+userApp.get('/vote/:blogId', verifyToken, expressAsyncHandler(async (req, res) => {
+    const { blogId } = req.params;
+    let connection;
+    try {
+        connection = await getConnection();
+        const result = await connection.execute(
+            `SELECT upvotes,DOWNVOTES FROM movieblog WHERE blogId = :blogId`,
+            { blogId }
+        );
+        res.send(result.rows[0]);
+    } catch (err) {
+        console.error("Error getting upvote count:", err.message);
+        res.status(500).send({ error: "Error getting upvote count" });
+    } finally {
+        if (connection) {
+            await connection.close();
+        }
+    }
+}));
+
 
 module.exports=userApp;

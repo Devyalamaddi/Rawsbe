@@ -1,14 +1,20 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
+import { MdDeleteOutline,MdThumbDown, MdThumbUp } from "react-icons/md";
+import { UserContextObj } from "../../context/UserContext";
+import {toast} from "react-toastify";
 
 export default function BlogView() {
   const { BLOGID } = useParams();
   const [blog, setBlog] = useState(null);
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
-  const [users, setUsers] = useState({}); // Store users' data by user ID
+  const [users, setUsers] = useState({});
+  const [userName, setUserName] = useState("");
   const navigate = useNavigate();
+  const {isAdmin} = useContext(UserContextObj);
+
 
   useEffect(() => {
     const fetchBlog = async () => {
@@ -42,6 +48,22 @@ export default function BlogView() {
     fetchBlog();
   }, [BLOGID]);
 
+  
+  useEffect(() => {
+    const fetchUserName = async () => {
+      if(blog && blog.USERID){
+        try {
+          const response = await axios.get(`http://localhost:1234/user-api/user/${blog.USERID}`);
+          setUserName(response.data.payload[0]); 
+        } catch (error) {
+          console.error("Error fetching user name:", error);
+        }
+      }
+    };
+
+    fetchUserName();
+  }, [blog]); 
+
   const token = localStorage.getItem("token");
 
   const handleAddComment = async () => {
@@ -49,17 +71,23 @@ export default function BlogView() {
       alert("Please login to add a comment");
       navigate("/login");
     }
-
-    try {
-      const data = await axios.post(
-        `http://localhost:1234/user-api/comment/${BLOGID}`,
-        { content: newComment },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setComments([...comments, { CONTENT: newComment, COMMENTID: data.commentId }]);
-      setNewComment("");
-    } catch (error) {
-      console.error("Error adding comment:", error);
+    else{
+      if(newComment===""){
+        alert("Please enter a comment");
+      }
+      else{
+        try {
+          const data = await axios.post(
+            `http://localhost:1234/user-api/comment/${BLOGID}`,
+            { content: newComment },
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          setComments([...comments, { CONTENT: newComment, COMMENTID: data.commentId }]);
+          setNewComment("");
+        } catch (error) {
+          console.error("Error adding comment:", error);
+        }
+      }
     }
   };
 
@@ -69,7 +97,7 @@ export default function BlogView() {
 
   const handleDeleteComment = async (commentId) => {
     try {
-      const data = await axios.delete(
+      await axios.delete(
         `http://localhost:1234/user-api/comment/${commentId}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -79,12 +107,80 @@ export default function BlogView() {
     }
   };
 
+  const [upVotes, setUpVotes] = useState(0);
+  const [downVotes, setDownVotes] = useState(0);
+
+  useEffect(() => {
+    const fetchBlog = async () => {
+      try {
+        const { data } = await axios.get(`http://localhost:1234/user-api/blogs/${BLOGID}`);
+        setBlog(data.payload[0]);
+
+        const commentsRes = await axios.get(`http://localhost:1234/user-api/comments/${BLOGID}`);
+        setComments(commentsRes.data.payload || []);
+
+        // Fetch users data in parallel
+        const userPromises = commentsRes.data.payload.map(async (comment) => {
+          const userRes = await axios.get(`http://localhost:1234/user-api/user/${comment.USERID}`);
+          return { userId: comment.USERID, userName: userRes.data.payload[0] };
+        });
+
+        const usersData = await Promise.all(userPromises);
+        const usersMap = {};
+        usersData.forEach(({ userId, userName }) => (usersMap[userId] = userName));
+        setUsers(usersMap);
+      } catch (error) {
+        console.error("Error fetching blog:", error);
+      }
+    };
+
+    const fetchVotes = async () => {
+      try {
+        const res = await axios.get(`http://localhost:1234/user-api/vote/${BLOGID}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        console.log(res.data);
+        setUpVotes(res.data[0]);
+        setDownVotes(res.data[1]);
+      } catch (error) {
+        console.error("Error fetching votes:", error);
+      }
+    };
+
+    fetchBlog();
+    fetchVotes();
+  }, [BLOGID, token]);
+
+  const handleVote = async (voteType) => {
+    console.log("Attempting to vote:", { voteType, userId:userId, blogId: BLOGID });
+    try {
+        const res = await axios.post(
+            `http://localhost:1234/user-api/vote`,
+            { voteType, userId:userId, blogId: BLOGID },
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        console.log("Server response:", res.data);
+        if (res.data.message === "Vote Casted") {
+            alert("Voted successfully!");
+            if (voteType === "U") setUpVotes(upVotes + 1);
+            else setDownVotes(downVotes + 1);
+        } else {
+            alert(res.data.message || "An error occurred while voting.");
+        }
+    } catch (err) {
+        console.error("Error while handling vote:", err.message);
+    }
+};
+
   return blog ? (
     <div className="p-6 max-w-4xl mx-auto bg-white shadow-md rounded-lg">
       <h1 className="text-3xl font-bold text-gray-800 mb-4">{blog.TITLE}</h1>
-      <p className="text-sm text-gray-500 mb-6">
-        Blog ID: {blog.BLOGID} | Posted on: {new Date(blog.DATEPOSTED).toDateString()}
-      </p>
+      <div className="flex gap-3 items-center">
+        <p className="text-sm text-gray-500">Blog ID: {blog.BLOGID}</p>
+        <p className="text-sm text-gray-500">Posted on: {new Date(blog.DATEPOSTED).toDateString()}</p>
+        <p className="text-sm text-gray-500">By: {userName || "Loading..."}</p>
+      </div>
 
       {/* First Half Review */}
       <div className="flex gap-10 justify-start w-full items-center">
@@ -107,41 +203,78 @@ export default function BlogView() {
       </div>
       <p className="mb-6 text-gray-700 leading-relaxed">{blog.CONTENT}</p>
 
+      {/* Voting Section */}
+      <div className="flex items-center gap-4 my-4">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handleVote('U')}
+            className={`flex items-center gap-1 px-3 py-1 rounded ${
+               'bg-green-100 hover:bg-green-200'
+            }`}
+          >
+            <MdThumbUp />
+            <span>{upVotes}</span>
+          </button>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handleVote('D')}
+            className={`flex items-center gap-1 px-3 py-1 rounded ${
+               'bg-red-100 hover:bg-red-200'
+            }`}
+          >
+            <MdThumbDown />
+            <span>{downVotes}</span>
+          </button>
+        </div>
+        {blog.STATUS === 'F' && (
+          <div className="text-red-500 font-semibold ml-4">
+            This blog has been flagged
+          </div>
+        )}
+      </div>
+
       {/* Comments Section */}
       <div className="border-t border-gray-200 pt-6">
         <h2 className="text-xl font-semibold text-gray-800 mb-4">Comments</h2>
         <div className="space-y-4">
           {comments.map((comment, index) => (
             <div key={index} className="bg-gray-100 text-gray-800 p-4 rounded-lg shadow-sm">
-              <p className="text-sm font-medium text-gray-600">
-                by: {comment.USERID === userId ? "You" : users[comment.USERID] || "Loading..."}
-              </p>
+              <div className="flex justify-between itmes-centerw-full">
+                <p className="text-sm font-medium text-gray-600">
+                  by: {comment.USERID === userId ? "You" : users[comment.USERID] || "Loading..."}
+                </p>
+                {(isAdmin || comment.USERID === userId)  && (
+                  <button className="bg-red-500/60 px-4 py-2 rounded text-white ease-in-out transition-colors duration-300 hover:bg-black hover:text-red-600/90" onClick={() => handleDeleteComment(comment.COMMENTID)}>
+                    <MdDeleteOutline className="size-4"/>
+                  </button>
+                )}
+              </div>
               <hr className="my-2" />
               <p className="text-gray-700">{comment.CONTENT}</p>
-              {comment.USERID === userId && (
-                <button className="bg-red-700/80 text-white" onClick={() => handleDeleteComment(comment.COMMENTID)}>
-                  Delete
-                </button>
-              )}
+              
             </div>
           ))}
         </div>
 
-        {/* Add Comment */}
-        <div className="mt-6">
-          <textarea
-            value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-            className="w-full p-3 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
-            placeholder="Write a comment..."
-          ></textarea>
-          <button
-            onClick={handleAddComment}
-            className="bg-black text-white px-4 py-2 mt-3 rounded-lg hover:bg-secondary-dark focus:outline-none focus:ring-2 focus:ring-secondary"
-          >
-            Add Comment
-          </button>
-        </div>
+        {
+          !isAdmin && (
+              <div className="mt-6">
+              <textarea
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                className="w-full p-3 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
+                placeholder="Write a comment..."
+              ></textarea>
+              <button
+                onClick={handleAddComment}
+                className="bg-black text-white px-4 py-2 mt-3 rounded-lg ease-in-out transition-colors duration-300 hover:text-white hover:bg-green-700 focus:outline-none focus:ring-2"
+              >
+                Add Comment
+              </button>
+            </div>
+          )
+        }
       </div>
     </div>
   ) : (
