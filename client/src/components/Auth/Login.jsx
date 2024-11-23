@@ -15,7 +15,7 @@ const Login = () => {
       const res = await login(data); // Ensure login returns a Promise
       if (res === "Login successful!") {
         
-        navigate('/dashboard');
+        navigate('/profile');
         toast.success(res);
       } else {
         toast.error("Login failed. Please check your credentials.");
@@ -29,7 +29,7 @@ const Login = () => {
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
-      navigate('/dashboard'); // Navigate to the dashboard if already logged in
+      navigate('/profile'); // Navigate to the profile if already logged in
     }
   }, [navigate]);
 

@@ -4,7 +4,6 @@ import { Link } from "react-router-dom";
 
 
 export default function MovieCard({ movie }) {
-  const token = localStorage.getItem("token");
   const [isLogin, setIsLogin] = useState(true);
 
   useEffect(() => {

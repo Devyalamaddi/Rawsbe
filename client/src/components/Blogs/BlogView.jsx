@@ -1,5 +1,5 @@
 import { useState, useEffect, useContext } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import {  useParams } from "react-router-dom";
 import axios from "axios";
 import { MdDeleteOutline,MdThumbDown, MdThumbUp } from "react-icons/md";
 import { UserContextObj } from "../../context/UserContext";
@@ -12,7 +12,6 @@ export default function BlogView() {
   const [newComment, setNewComment] = useState("");
   const [users, setUsers] = useState({});
   const [userName, setUserName] = useState("");
-  const navigate = useNavigate();
   const {isAdmin} = useContext(UserContextObj);
 
 
@@ -67,26 +66,20 @@ export default function BlogView() {
   const token = localStorage.getItem("token");
 
   const handleAddComment = async () => {
-    if (!token) {
-      alert("Please login to add a comment");
-      navigate("/login");
+    if(newComment===""){
+      toast.warning("Please enter a comment");
     }
     else{
-      if(newComment===""){
-        alert("Please enter a comment");
-      }
-      else{
-        try {
-          const data = await axios.post(
-            `http://localhost:1234/user-api/comment/${BLOGID}`,
-            { content: newComment },
-            { headers: { Authorization: `Bearer ${token}` } }
-          );
-          setComments([...comments, { CONTENT: newComment, COMMENTID: data.commentId }]);
-          setNewComment("");
-        } catch (error) {
-          console.error("Error adding comment:", error);
-        }
+      try {
+        const data = await axios.post(
+          `http://localhost:1234/user-api/comment/${BLOGID}`,
+          { content: newComment },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        setComments([...comments, { CONTENT: newComment, COMMENTID: data.commentId }]);
+        setNewComment("");
+      } catch (error) {
+        console.error("Error adding comment:", error);
       }
     }
   };
@@ -139,13 +132,19 @@ export default function BlogView() {
         const res = await axios.get(`http://localhost:1234/user-api/vote/${BLOGID}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        console.log(res.data);
-        setUpVotes(res.data[0]);
-        setDownVotes(res.data[1]);
+    
+        // Assuming the response contains upVotes and downVotes
+        if (res.data[0] !== undefined && res.data[1] !== undefined) {
+          setUpVotes(res.data[0]);
+          setDownVotes(res.data[1]);
+        } else {
+          console.error("Unexpected response format:", res.data);
+        }
       } catch (error) {
         console.error("Error fetching votes:", error);
       }
     };
+    
 
     fetchBlog();
     fetchVotes();
@@ -162,11 +161,14 @@ export default function BlogView() {
 
         console.log("Server response:", res.data);
         if (res.data.message === "Vote Casted") {
-            alert("Voted successfully!");
+            toast.success("Voted successfully!");
             if (voteType === "U") setUpVotes(upVotes + 1);
             else setDownVotes(downVotes + 1);
         } else {
-            alert(res.data.message || "An error occurred while voting.");
+            toast.error(res.data.message || "An error occurred while voting.");
+            if(res.data.message==="User has already voted"){
+              toast.info("You have already voted for this blog.");
+            }
         }
     } catch (err) {
         console.error("Error while handling vote:", err.message);
