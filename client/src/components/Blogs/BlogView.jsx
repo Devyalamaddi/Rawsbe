@@ -151,29 +151,35 @@ export default function BlogView() {
   }, [BLOGID, token]);
 
   const handleVote = async (voteType) => {
-    console.log("Attempting to vote:", { voteType, userId:userId, blogId: BLOGID });
+    // console.log("Attempting to vote:", { voteType, userId: userId, blogId: BLOGID });
     try {
         const res = await axios.post(
             `http://localhost:1234/user-api/vote`,
-            { voteType, userId:userId, blogId: BLOGID },
+            { voteType, userId: userId, blogId: BLOGID },
             { headers: { Authorization: `Bearer ${token}` } }
         );
 
-        console.log("Server response:", res.data);
+        // console.log("Server response:", res.data);
         if (res.data.message === "Vote Casted") {
             toast.success("Voted successfully!");
             if (voteType === "U") setUpVotes(upVotes + 1);
             else setDownVotes(downVotes + 1);
-        } else {
-            toast.error(res.data.message || "An error occurred while voting.");
-            if(res.data.message==="User has already voted"){
-              toast.info("You have already voted for this blog.");
-            }
         }
     } catch (err) {
-        console.error("Error while handling vote:", err.message);
+        if (err.response && err.response.status === 400) {
+            const serverMessage = err.response.data.message;
+            if (serverMessage === "User has already voted") {
+                toast.warning("You have already voted for this blog.");
+            } else {
+                toast.error(serverMessage || "An error occurred while voting.");
+            }
+        } else {
+            toast.error("Unexpected error occurred. Please try again.");
+        }
+        console.log("Error while handling vote:", err.message);
     }
 };
+
 
   return blog ? (
     <div className="p-6 max-w-4xl mx-auto bg-white shadow-md rounded-lg">
@@ -212,7 +218,8 @@ export default function BlogView() {
             onClick={() => handleVote('U')}
             className={`flex items-center gap-1 px-3 py-1 rounded ${
                'bg-green-100 hover:bg-green-200'
-            }`}
+            } ${isAdmin ? "hover:cursor-not-allowed":""}`}
+            disabled={isAdmin}
           >
             <MdThumbUp />
             <span>{upVotes}</span>
@@ -223,7 +230,8 @@ export default function BlogView() {
             onClick={() => handleVote('D')}
             className={`flex items-center gap-1 px-3 py-1 rounded ${
                'bg-red-100 hover:bg-red-200'
-            }`}
+            } ${isAdmin ? "hover:cursor-not-allowed":""}` }
+            disabled={isAdmin}
           >
             <MdThumbDown />
             <span>{downVotes}</span>

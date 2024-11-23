@@ -11,6 +11,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <UserContext>
       <App />
+      <meta charset="UTF-8"/>
       <ToastContainer
                 position="bottom-right"
                 autoClose={5000}
