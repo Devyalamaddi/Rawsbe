@@ -172,6 +172,47 @@ userApp.get('/blogs',expressAsyncHandler(async (req, res) => {
       }
 }));
 
+//to get flagged blogs (admin)
+//To get all blogs(d)(D)
+userApp.get('/blogs/admin',expressAsyncHandler(async (req, res) => {
+    let connection;
+    try {
+      connection = await getConnection(); // Get connection to the DB
+      const result = await connection.execute(
+        `SELECT * FROM MovieBlog where status = 'F' `,
+        [],
+        { outFormat: require('oracledb').OUT_FORMAT_OBJECT } // To get data as objects
+      );
+
+      // Process rows to read the CLOB content
+      const blogs = await Promise.all(
+        result.rows.map(async (row) => {
+          if (row.CONTENT && typeof row.CONTENT.setEncoding === 'function') {
+            row.CONTENT = await new Promise((resolve, reject) => {
+              let clobData = '';
+              row.CONTENT.setEncoding('utf8'); // Set encoding to read as text
+              row.CONTENT.on('data', (chunk) => {
+                clobData += chunk;
+              });
+              row.CONTENT.on('end', () => resolve(clobData));
+              row.CONTENT.on('error', (err) => reject(err));
+            });
+          }
+          return row;
+        })
+      );
+
+      res.send({ message: "getting all blogs", payload: blogs });
+    } catch (err) {
+      console.error(err);
+      res.status(500).send({ message: "Database error while getting blogs" });
+    } finally {
+      if (connection) {
+        await connection.close();
+      }
+    }
+}));
+
 //To see blogs by a user (d)(D)
 userApp.get('/blogs/user/:userId',verifyToken,expressAsyncHandler(async(req,res)=>{
     const userId = req.params.userId;
@@ -326,8 +367,6 @@ userApp.get('/comments/:blogID', expressAsyncHandler(async (req, res) => {
     }
 }));
 
-
-
 //To edit user themselves(d)(D)
 userApp.put("/edituser/:userId",expressAsyncHandler(async (req, res) => {
       const userId = req.params.userId;
@@ -335,9 +374,8 @@ userApp.put("/edituser/:userId",expressAsyncHandler(async (req, res) => {
       try {
         connection = await getConnection(); // Get connection to the DB
         const { name, password } = req.body; // Email removed from the update request
-        const hashedPassword = password
-          ? await bcryptjs.hash(password, 10)
-          : null;
+        console.log(req.body);
+        const hashedPassword =await bcryptjs.hash(password, 10)
   
         const updateQuery = hashedPassword
           ? `UPDATE users SET name = :name, password = :hashedPassword WHERE userId = :userId`
@@ -345,7 +383,9 @@ userApp.put("/edituser/:userId",expressAsyncHandler(async (req, res) => {
   
         await connection.execute(
           updateQuery,
-          { name, hashedPassword, userId },
+          { name:name,
+            hashedPassword:hashedPassword, 
+            userId:userId },
           { autoCommit: true }
         );
   
@@ -605,6 +645,27 @@ userApp.post("/new-movie", verifyToken,isAdmin, expressAsyncHandler(async (req, 
     }
 }));
 
+//delete a blog by blogId
+userApp.delete("/delete-blog/:blogId",verifyToken, isAdmin, expressAsyncHandler(async (req, res) => {
+    const blogId = req.params.blogId;
+    // console.log(blogId)
+    let connection;
+    try {
+        connection = await getConnection();
+        const response=await connection.execute(`DELETE FROM movieblog WHERE blogId = :blogId`, 
+            { blogId: blogId },
+            { autoCommit: true});
+            // console.log(response);
+            res.send({ message: "Blog deleted successfully" });
+    }catch(err){
+        console.log("Error while deleting the blog:", err.message);
+    }finally{
+        if(connection){
+            await connection.close();
+        }
+    }
+}));
+
 //Get all the users if admin is logged
 userApp.get("/users", verifyToken, isAdmin, expressAsyncHandler(async (req, res)=>{
     let connection;
@@ -671,50 +732,93 @@ function generateUniqueVoteId() {
     return `${prefix}${randomPart}`;
 }
 
-userApp.post("/vote", verifyToken, expressAsyncHandler(async (req, res) => {
-    const { voteType, blogId, userId } = req.body;
-    if (!voteType || !blogId || !userId) {
-        return res.status(400).send({ error: "Missing required fields" });
-    }
-    const voteId = generateUniqueVoteId();
-    let connection;
-    try {
-        connection = await getConnection();
-        
-        // Check if user already voted
-        const existingVote = await connection.execute(
-            `SELECT * FROM blogVotes WHERE userId = :userId AND blogId = :blogId`,
-            { userId, blogId }
-        );
-        if (existingVote.rows.length > 0) {
-            return res.status(400).send({ message: "User has already voted" });
+userApp.post("/vote",verifyToken,expressAsyncHandler(async (req, res) => {
+        const { voteType, blogId, userId } = req.body;
+
+        // Validate request data
+        if (!voteType || !blogId || !userId) {
+            return res.status(400).send({ message: "Missing required fields" });
         }
-        // Insert vote and update count
-        await connection.execute(
-            `INSERT INTO blogVotes (voteId, blogId, userId) VALUES (:voteId, :blogId, :userId)`,
-            { voteId, blogId, userId }
-        );
 
-        const updateField = voteType === 'U' ? "upvotes" : "downvotes";
-        await connection.execute(
-            `UPDATE movieblog SET ${updateField} = ${updateField} + 1 WHERE blogId = :blogId`,
-            { blogId }
-        );
+        const voteId = generateUniqueVoteId();
+        let connection;
 
-        await connection.commit();
-        res.send({ message: "Vote Casted" });
-    } catch (err) {
-        console.error("Error during voting:", err.message);
-        res.status(500).send({ error: "Error voting" });
-    } finally {
-        if (connection) {
-            await connection.close();
+        try {
+            connection = await getConnection();
+
+            // Check if the user has already voted
+            const existingVote = await connection.execute(
+                `SELECT * FROM blogVotes WHERE userId = :userId AND blogId = :blogId`,
+                { userId, blogId }
+            );
+
+            if (existingVote.rows.length > 0) {
+                return res.status(400).send({ message: "User has already voted" });
+            }
+
+            // Insert the vote
+            await connection.execute(
+                `INSERT INTO blogVotes (voteId, blogId, userId) VALUES (:voteId, :blogId, :userId)`,
+                { voteId, blogId, userId}
+            );
+
+            // Update the appropriate counter
+            const updateField = voteType === "U" ? "upvotes" : "downvotes";
+            await connection.execute(
+                `UPDATE movieblog SET ${updateField} = ${updateField} + 1 WHERE blogId = :blogId`,
+                { blogId }
+            );
+
+            // Check vote counts and update status if necessary
+            const blogData = await connection.execute(
+                `SELECT upvotes, downvotes FROM movieblog WHERE blogId = :blogId`,
+                { blogId }
+            );
+
+            if (blogData.rows.length > 0) {
+    const { UPVOTES: upvotes, DOWNVOTES: downvotes } = blogData.rows[0];
+    
+    // Get the total number of users by joining with the 'users' table
+    const totalUsersResult = await connection.execute(
+        `SELECT COUNT(*) AS totalUsers FROM users`
+    );
+    const totalUsers = totalUsersResult.totalUsers;
+    
+    const totalVotes = upvotes + downvotes;
+
+    if (totalVotes > 0) {
+        // Calculate the downvote percentage based on the total number of users
+        const downvotePercentage = (downvotes / totalUsers) * 100;
+
+        // If downvotes exceed 60% of total users, set STATUS to 'F'
+        if (downvotePercentage > 60) {
+            await connection.execute(
+                `UPDATE movieblog SET STATUS = 'F' WHERE blogId = :blogId`,
+                { blogId }
+            );
         }
     }
-}));
+}
 
 
-// Get upvotes for a blog by ID
+            // Commit the transaction
+            await connection.commit();
+            res.send({ message: "Vote Casted" });
+        } catch (err) {
+            console.error("Error during voting:", err.message);
+            res.status(500).send({ message: "Error voting" });
+        } finally {
+            if (connection) {
+                await connection.close();
+            }
+        }
+    })
+);
+
+
+
+
+// Get upvotes and downvotes for a blog by ID
 userApp.get('/vote/:blogId', verifyToken, expressAsyncHandler(async (req, res) => {
     const { blogId } = req.params;
     let connection;

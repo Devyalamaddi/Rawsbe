@@ -1,13 +1,17 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useContext } from "react";
 import axios from "axios";
 import BlogCard from "../Blogs/BlogCard";
 import { TbHttpDelete } from "react-icons/tb";
+import { UserContextObj } from "../../context/UserContext";
+import Profile from "../Profile";  // Import the Profile component
 
 export default function Dashboard() {
   const [userBlogs, setUserBlogs] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { isAdmin } = useContext(UserContextObj);
+  const [isEditing, setIsEditing] = useState(false); // State to control profile edit visibility
 
   const token = localStorage.getItem("token");
   const payload = useMemo(() => (token ? JSON.parse(atob(token.split('.')[1])) : null), [token]);
@@ -49,7 +53,6 @@ export default function Dashboard() {
       console.error("Error deleting user:", error);
     }
   };
-  
 
   const fetchUserBlogs = async () => {
     if (!payload?.userId) return;
@@ -57,7 +60,7 @@ export default function Dashboard() {
     try {
       setLoading(true);
       const response = await axios.get(
-        `http://localhost:1234/user-api/blogs/user/${payload.userId}`,
+        `http://localhost:1234/user-api/blogs${isAdmin ? "/admin" : `/user/${payload.userId}`}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setUserBlogs(response.data.payload || []);
@@ -97,19 +100,43 @@ export default function Dashboard() {
         <div className="flex justify-center items-center h-32">Loading...</div>
       ) : (
         <>
-          <section className="mb-8">
-            <h2 className="text-xl font-bold mb-4">Your Blogs</h2>
-            {userBlogs.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {userBlogs.map((blog) => (
-                  <BlogCard key={blog.BLOGID} blog={blog} />
-                ))}
+          {/* Profile Section at the Top */}
+          <section className="mb-8 p-4 bg-gray-100 rounded-lg shadow-md">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-xl font-bold">{payload?.name}</h2>
+                <p className="text-sm text-gray-500">{payload?.email}</p>
               </div>
-            ) : (
-              <p>No blogs found</p>
+              <button
+                onClick={() => setIsEditing((prev) => !prev)}
+                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition duration-200"
+              >
+                Edit Profile
+              </button>
+            </div>
+            {isEditing && (
+              <Profile 
+                setIsEditing={setIsEditing} // Pass the function to Profile component
+              />
             )}
           </section>
 
+          <section className="mb-8">
+            <h2 className="text-xl font-bold mb-4">
+              {isAdmin ? "Flagged Blogs" : "Your Blogs"}
+            </h2>
+            {userBlogs.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {userBlogs.map((blog) => (
+                  <BlogCard key={blog.BLOGID} blog={blog} refreshBlogs={fetchUserBlogs} />
+                ))}
+              </div>
+            ) : (
+              <p>Empty</p>
+            )}
+          </section>
+
+          {/* Admin Section for Managing Users */}
           {payload.role === 'admin' && (
             <section>
               <h2 className="text-xl font-bold mb-4">Users List</h2>
@@ -118,18 +145,10 @@ export default function Dashboard() {
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          User ID
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Name
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Email
-                        </th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Actions
-                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User ID</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">

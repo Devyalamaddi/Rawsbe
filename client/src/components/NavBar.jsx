@@ -51,13 +51,16 @@ function NavBar() {
               {isAdmin && <Link to="/new-movie">Add New Movie</Link>}
               <Link to="/">Home</Link>
               <Link to="/dashboard">Dashboard</Link>
-              <span className="text-xl">
+              <Link to="/blogs">Explore Blogs</Link>
+              <Link to="/movies">Explore Movies</Link>
+              
+              <Link className="text-xl" to="/profile">
                 Welcome,{" "}
                 <span className=" font-extrabold text-pink-300">
                   {currentUser?.name ? capitalizeFirstLetter(currentUser.name) : "User"}
                 </span>
                 !
-              </span>
+              </Link>
               <button
                 onClick={() => {
                   logout();
