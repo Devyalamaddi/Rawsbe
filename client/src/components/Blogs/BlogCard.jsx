@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
+import {toast} from "react-toastify"
 
 export default function BlogCard({ blog }) {
   const [userName, setUserName] = useState("");
@@ -17,6 +18,15 @@ export default function BlogCard({ blog }) {
 
     fetchUserName();
   }, [blog.USERID]); 
+  const token = localStorage.getItem("token");
+
+  //to alert about the login Status
+  const checkLoginStatus = () => {
+    if (!token) {
+      toast.warning("Please Login to read the Review");
+    }
+  }
+  
 
   return (
     <div className="shadow-md rounded p-4 hover:shadow-lg transition">
@@ -28,8 +38,12 @@ export default function BlogCard({ blog }) {
         </div>
         <p className="text-sm text-gray-500">Rating: <span className="bold text-yellow-500">{blog.OVERALLRATING}/10</span></p>
       </div>
+
       <Link
-        to={`/blogs/${blog.BLOGID}`}
+        to={
+          token===null ? '/login' : `/blogs/${blog.BLOGID}`
+        }
+        onClick={checkLoginStatus}
         className="mt-4 inline-block text-blue-800 hover:underline"
       >
         Read More

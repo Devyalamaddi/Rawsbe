@@ -4,7 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 
 function NavBar() {
   const { loginStatus, currentUser, logout, isAdmin } = useContext(UserContextObj);
-  const [menuOpen, setMenuOpen] = useState(false); // State to toggle the mobile menu
+  const [menuOpen, setMenuOpen] = useState(false); 
   const navigate = useNavigate();
 
   function capitalizeFirstLetter(name) {
@@ -53,7 +53,7 @@ function NavBar() {
               <Link to="/dashboard">Dashboard</Link>
               <span className="text-xl">
                 Welcome,{" "}
-                <span className=" font-extrabold text-green-700">
+                <span className=" font-extrabold text-pink-300">
                   {currentUser?.name ? capitalizeFirstLetter(currentUser.name) : "User"}
                 </span>
                 !

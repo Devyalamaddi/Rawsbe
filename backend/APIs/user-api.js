@@ -329,26 +329,36 @@ userApp.get('/comments/:blogID', expressAsyncHandler(async (req, res) => {
 
 
 //To edit user themselves(d)(D)
-userApp.put('/edituser/:userId',expressAsyncHandler(async(req,res)=>{
-    const userId = req.params.userId;
-    let connection;
-    try {
+userApp.put("/edituser/:userId",expressAsyncHandler(async (req, res) => {
+      const userId = req.params.userId;
+      let connection;
+      try {
         connection = await getConnection(); // Get connection to the DB
-        const {name,email,password} = req.body;
-        const hashedPassword = await bcryptjs.hash(password, 10);
-        await connection.execute(`UPDATE users SET name = :name, email = :email, password = :hashedPassword WHERE userId = :userId`,
-            {
-                name:name, email:email, hashedPassword:hashedPassword, userId:userId
-            },{autoCommit:true});
-        
-        res.send({message:"User updated"});
-    }catch(err){
+        const { name, password } = req.body; // Email removed from the update request
+        const hashedPassword = password
+          ? await bcryptjs.hash(password, 10)
+          : null;
+  
+        const updateQuery = hashedPassword
+          ? `UPDATE users SET name = :name, password = :hashedPassword WHERE userId = :userId`
+          : `UPDATE users SET name = :name WHERE userId = :userId`;
+  
+        await connection.execute(
+          updateQuery,
+          { name, hashedPassword, userId },
+          { autoCommit: true }
+        );
+  
+        res.send({ message: "User updated" });
+      } catch (err) {
         console.error(err);
-        res.send({message:err.message});
-    }finally{
+        res.send({ message: err.message });
+      } finally {
         await connection.close();
-    }
-}));
+      }
+    })
+  );
+  
 
 //Function to generate unique blog ID
 function generateUniqueBlogId() {
@@ -364,7 +374,7 @@ userApp.post("/new-blog",verifyToken, expressAsyncHandler(async(req,res)=>{
     let connection;
     try {
         connection = await getConnection(); // Get connection to the DB
-        await connection.execute(`INSERT INTO MovieBlog VALUES (:blogId,:movieID,:userId,:blogTitle,:blogContent,:dateposted,:fhRa,:shRa, :oar, :fhr, :shr) `,{
+        await connection.execute(`INSERT INTO MovieBlog VALUES (:blogId,:movieID,:userId,:blogTitle,:blogContent,:dateposted,:fhRa,:shRa, :oar, :fhr, :shr,0,0,:status) `,{
             blogId:generateUniqueBlogId(),
             userId:newBlog.userId,
             movieID:newBlog.movieId,
@@ -375,7 +385,8 @@ userApp.post("/new-blog",verifyToken, expressAsyncHandler(async(req,res)=>{
             shRa:newBlog.secondHalfRating,
             oar:newBlog.overallRating,
             fhr:newBlog.firstHalfReview,
-            shr:newBlog.secondHalfReview
+            shr:newBlog.secondHalfReview,
+            status:"T"
         },{autoCommit:true});
        
         res.send({message:"Blog posted successfully!",payload:newBlog});
@@ -514,26 +525,31 @@ userApp.delete("/comment/:commentID", verifyToken, expressAsyncHandler(async (re
 }));
 
 // Get user by userID(D)(D)
-userApp.get("/user/:userId",expressAsyncHandler(async (req, res) => {
+userApp.get("/user/:userId", expressAsyncHandler(async (req, res) => {
     const userId = req.params.userId;
     let connection;
     try {
-        connection = await getConnection();
-        const result = await connection.execute(
-            `SELECT name FROM users WHERE userid = :1`,
-            [userId],
-            { outFormat: OracleDB.OUT_FORMAT_ARRAY }
-        );
+      connection = await getConnection();
+      const result = await connection.execute(
+        `SELECT name,email FROM users WHERE userid = :1`,
+        [userId],
+        { outFormat: OracleDB.OUT_FORMAT_ARRAY }
+      );
+      if (result.rows.length === 0) {
+        res.status(404).send({ message: "User not found" });
+      } else {
         res.send({ payload: result.rows[0] });
+      }
     } catch (err) {
-        console.error("Error fetching user:", err.message);
-        res.status(500).send({ message: err.message });
+      console.error("Error fetching user:", err.message);
+      res.status(500).send({ message: err.message });
     } finally {
-        if (connection) {
-            await connection.close();
-        }
+      if (connection) {
+        await connection.close();
+      }
     }
-}));
+  }));
+  
 
 
 //To verify is the user a ADMIN
@@ -656,43 +672,34 @@ function generateUniqueVoteId() {
 }
 
 userApp.post("/vote", verifyToken, expressAsyncHandler(async (req, res) => {
-    console.log("Received request at /vote:", req.body);
     const { voteType, blogId, userId } = req.body;
-    console.log("Received request at /vote:2", req.body);
     if (!voteType || !blogId || !userId) {
         return res.status(400).send({ error: "Missing required fields" });
     }
-    console.log("Received request at /vote:3", req.body);
     const voteId = generateUniqueVoteId();
-    console.log("Received request at /vote:4", req.body);
     let connection;
     try {
         connection = await getConnection();
-        console.log("Received request at /vote:5", req.body);
         
         // Check if user already voted
         const existingVote = await connection.execute(
             `SELECT * FROM blogVotes WHERE userId = :userId AND blogId = :blogId`,
             { userId, blogId }
         );
-        console.log("Received request at /vote:6", req.body);
         if (existingVote.rows.length > 0) {
             return res.status(400).send({ message: "User has already voted" });
         }
-        console.log("Received request at /vote:7", req.body);
         // Insert vote and update count
         await connection.execute(
             `INSERT INTO blogVotes (voteId, blogId, userId) VALUES (:voteId, :blogId, :userId)`,
             { voteId, blogId, userId }
         );
-        console.log("Received request at /vote:8", req.body);
 
         const updateField = voteType === 'U' ? "upvotes" : "downvotes";
         await connection.execute(
             `UPDATE movieblog SET ${updateField} = ${updateField} + 1 WHERE blogId = :blogId`,
             { blogId }
         );
-        console.log("Received request at /vote:9", req.body);
 
         await connection.commit();
         res.send({ message: "Vote Casted" });
@@ -717,6 +724,7 @@ userApp.get('/vote/:blogId', verifyToken, expressAsyncHandler(async (req, res) =
             `SELECT upvotes,DOWNVOTES FROM movieblog WHERE blogId = :blogId`,
             { blogId }
         );
+        // console.log(result.rows[0])
         res.send(result.rows[0]);
     } catch (err) {
         console.error("Error getting upvote count:", err.message);

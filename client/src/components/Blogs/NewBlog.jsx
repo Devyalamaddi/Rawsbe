@@ -1,7 +1,7 @@
 import { useState } from "react";
 import axios from "axios";
 import { useNavigate, useParams } from "react-router-dom";
-import toast from "react-hot-toast"
+import {toast} from "react-toastify"
 
 export default function NewBlog() {
   const { movieID } = useParams();
@@ -19,6 +19,7 @@ export default function NewBlog() {
     e.preventDefault();
     try {
       const token = localStorage.getItem("token");
+      const {userId} = localStorage.getItem("currentUser");
       let res =await axios.post(
         "http://localhost:1234/user-api/new-blog",
         {
@@ -30,6 +31,7 @@ export default function NewBlog() {
           firstHalfRating,
           secondHalfRating,
           overallRating,
+          userId,
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
