@@ -3,7 +3,8 @@ import axios from "axios";
 import BlogCard from "../Blogs/BlogCard";
 import { TbHttpDelete } from "react-icons/tb";
 import { UserContextObj } from "../../context/UserContext";
-import Profile from "../Profile";  // Import the Profile component
+import "bootstrap/dist/css/bootstrap.min.css";
+import EditProfileModal from '../EditProfileModal'; 
 
 export default function Dashboard() {
   const [userBlogs, setUserBlogs] = useState([]);
@@ -11,13 +12,12 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const { isAdmin } = useContext(UserContextObj);
-  const [isEditing, setIsEditing] = useState(false); // State to control profile edit visibility
 
   const token = localStorage.getItem("token");
   const payload = useMemo(() => (token ? JSON.parse(atob(token.split('.')[1])) : null), [token]);
 
   useEffect(() => {
-    if (payload?.role === 'admin') {
+    if (payload?.role === "admin") {
       fetchUsers();
     }
     fetchUserBlogs();
@@ -45,7 +45,7 @@ export default function Dashboard() {
         headers: { Authorization: `Bearer ${token}` },
       });
       setError(null);
-  
+
       // Fetch updated users list after deletion
       await fetchUsers();
     } catch (error) {
@@ -56,7 +56,7 @@ export default function Dashboard() {
 
   const fetchUserBlogs = async () => {
     if (!payload?.userId) return;
-    
+
     try {
       setLoading(true);
       const response = await axios.get(
@@ -73,22 +73,27 @@ export default function Dashboard() {
     }
   };
 
-  useEffect(() => {
-    if (payload?.role === 'admin') {
-      fetchUsers();
-    }
-    fetchUserBlogs();
-  }, []);
-
   if (!payload) {
-    return <div className="p-4">Please log in to view dashboard</div>;
+    return <div className="p-4">Please log in to view the dashboard</div>;
   }
 
   return (
     <div className="p-4">
-      <h1 className="text-3xl font-bold mb-6">
-        {payload.role === 'admin' ? "Admin Dashboard" : "Dashboard"}
-      </h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">
+          {payload.role === "admin" ? "Admin Dashboard" : "Dashboard"}
+        </h1>
+        {payload.role !== "admin" && (
+          <EditProfileModal 
+            payload={payload} 
+            token={token} 
+            onProfileUpdate={() => {
+              // Optional: You can add any additional refresh logic here if needed
+              console.log("Profile updated");
+            }} 
+          />
+        )}
+      </div>
 
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -100,27 +105,6 @@ export default function Dashboard() {
         <div className="flex justify-center items-center h-32">Loading...</div>
       ) : (
         <>
-          {/* Profile Section at the Top */}
-          <section className="mb-8 p-4 bg-gray-100 rounded-lg shadow-md">
-            <div className="flex justify-between items-center">
-              <div>
-                <h2 className="text-xl font-bold">{payload?.name}</h2>
-                <p className="text-sm text-gray-500">{payload?.email}</p>
-              </div>
-              <button
-                onClick={() => setIsEditing((prev) => !prev)}
-                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition duration-200"
-              >
-                Edit Profile
-              </button>
-            </div>
-            {isEditing && (
-              <Profile 
-                setIsEditing={setIsEditing} // Pass the function to Profile component
-              />
-            )}
-          </section>
-
           <section className="mb-8">
             <h2 className="text-xl font-bold mb-4">
               {isAdmin ? "Flagged Blogs" : "Your Blogs"}
@@ -137,7 +121,7 @@ export default function Dashboard() {
           </section>
 
           {/* Admin Section for Managing Users */}
-          {payload.role === 'admin' && (
+          {payload.role === "admin" && (
             <section>
               <h2 className="text-xl font-bold mb-4">Users List</h2>
               {users.length > 0 ? (
@@ -145,10 +129,18 @@ export default function Dashboard() {
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User ID</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          User ID
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Name
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Email
+                        </th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Actions
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">

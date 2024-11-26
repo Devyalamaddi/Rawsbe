@@ -54,7 +54,7 @@ function NavBar() {
               <Link to="/blogs">Explore Blogs</Link>
               <Link to="/movies">Explore Movies</Link>
               
-              <Link className="text-xl" to="/profile">
+              <Link className="text-xl" to="/dashboard">
                 Welcome,{" "}
                 <span className=" font-extrabold text-pink-300">
                   {currentUser?.name ? capitalizeFirstLetter(currentUser.name) : "User"}

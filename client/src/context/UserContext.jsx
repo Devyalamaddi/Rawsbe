@@ -32,7 +32,8 @@ useEffect(() => {
   async function login(userObj) {
     try {
       const response = await axios.post("http://localhost:1234/user-api/login", userObj);
-      if (response.status === 200) {
+      console.log(response,"from usercontext login function")
+      if (response.data.message==="User logged in" || response.data.message==="logged in as Admin") {
         const { token, user } = response.data;
         localStorage.setItem("token", token);
         localStorage.setItem("currentUser", JSON.stringify(user)); // Save user details
@@ -98,6 +99,7 @@ useEffect(() => {
         logout,
         loginStatus,
         currentUser,
+        setCurrentUser,
         error,
         setError,
         isAdmin,

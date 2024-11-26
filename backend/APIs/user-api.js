@@ -78,7 +78,7 @@ userApp.post('/registration', expressAsyncHandler(async (req, res) => {
 //User login (d)(D)
 userApp.post('/login', expressAsyncHandler(async(req,res)=>{
     const newUser = req.body;
-    // console.log(newUser)
+    console.log(newUser)
     if (newUser.email=== adminCredentials.email && bcryptjs.compareSync(newUser.password, adminCredentials.password)) {
 
         const token = jwt.sign(
@@ -102,7 +102,10 @@ userApp.post('/login', expressAsyncHandler(async(req,res)=>{
             if (result.rows.length > 0) {
                 // If user exists, send response
                 dbUser=result.rows[0];
-                if(bcryptjs.compare(dbUser[3],newUser.password)){
+                // console.log(dbUser)
+                // console.log(newUser.password);
+                // console.log(await bcryptjs.hash(newUser.password,3))
+                if(await bcryptjs.compare(newUser.password,dbUser[3])){
                     
                     //token creation
                     const token = jwt.sign(
@@ -367,14 +370,41 @@ userApp.get('/comments/:blogID', expressAsyncHandler(async (req, res) => {
     }
 }));
 
+//to get blogs count on a movie by movieid
+userApp.get('/blogcount/:movieid', expressAsyncHandler(async (req, res) =>{
+    const movieid = req.params.movieid;
+    console.log(movieid)
+    if (!movieid) {
+        return res.status(400).send({ message: "movieid parameter is missing" });
+    }
+    let connection;
+    try {
+        connection = await getConnection();
+        const result = await connection.execute
+        ('SELECT COUNT(blogid) as c FROM movieblog WHERE movieid = :movieid and status = :st',
+            { movieid:movieid, st:'T' },
+            { autoCommit: true, outFormat: OracleDB.OUT_FORMAT_OBJECT }
+        );
+        const blogCount = result.rows[0] || 0;
+        console.log(result.rows[0])
+        res.send({ message: "Blog count on a movie", payload: blogCount.C });
+    } catch (err) {
+        console.error("Error while getting blog count:", err.message);
+        res.status(500).send({ message: err.message});
+    } finally {
+        if (connection) {
+            await connection.close();
+        }
+    }
+}));
+
 //To edit user themselves(d)(D)
 userApp.put("/edituser/:userId",expressAsyncHandler(async (req, res) => {
       const userId = req.params.userId;
       let connection;
       try {
-        connection = await getConnection(); // Get connection to the DB
-        const { name, password } = req.body; // Email removed from the update request
-        console.log(req.body);
+        connection = await getConnection();
+        const { name, password } = req.body;
         const hashedPassword =await bcryptjs.hash(password, 10)
   
         const updateQuery = hashedPassword
