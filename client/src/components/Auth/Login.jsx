@@ -15,7 +15,7 @@ const Login = () => {
       const res = await login(data); // Ensure login returns a Promise
       if (res === "Login successful!") {
         
-        navigate('/profile');
+        navigate('/dashboard');
         toast.success(res);
       } else {
         toast.error("Login failed. Please check your credentials.");
@@ -29,7 +29,7 @@ const Login = () => {
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
-      navigate('/profile'); // Navigate to the profile if already logged in
+      navigate('/dashboard'); // Navigate to the profile if already logged in
     }
   }, [navigate]);
 
@@ -46,13 +46,14 @@ const Login = () => {
               id="email"
               type="email"
               placeholder="Email"
-              className="pl-12 w-full p-4 border border-gray-800 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent transition duration-200 ease-in-out placeholder-gray-400 text-black"
+              className=" pl-12 pt-4 pb-4 w-full border border-gray-800 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent transition duration-200 ease-in-out placeholder-gray-400 text-black"
               {...register('email', { required: 'Email is required' })}
             />
             {errors.email && (
               <p className="mt-2 text-sm text-red-600">{errors.email.message}</p>
             )}
           </div>
+
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
               <Lock className="h-6 w-6 text-gray-400" />
@@ -61,7 +62,7 @@ const Login = () => {
               id="password"
               type="password"
               placeholder="Password"
-              className="pl-12 w-full p-4 border border-gray-800 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent transition duration-200 ease-in-out placeholder-gray-400 text-black"
+              className="pl-12 pt-4 pb-4  w-full border border-gray-800 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent transition duration-200 ease-in-out placeholder-gray-400 text-black"
               {...register('password', { required: 'Password is required' })}
             />
             {errors.password && (

@@ -9,7 +9,6 @@ import NewBlog from "./components/Blogs/NewBlog";
 import Dashboard from "./components/Dashboard/Dashboard";
 import MovieList from "./components/Movies/MovieList";
 import NewMovie from "./components/Movies/NewMovie";
-import Profile from "./components/Profile";
 import ProtectedRoute from "./components/ProtectedRoute";
 import LandingPage from "./components/LandingPage";
 
@@ -27,7 +26,6 @@ const router = createBrowserRouter([
       { path: "/movies", element: <MovieList /> },
       { path: "/new-movie", element: <ProtectedRoute component={<NewMovie />} /> },
       { path: "/dashboard", element: <ProtectedRoute component={<Dashboard />} /> },
-      { path: "/profile", element: <ProtectedRoute component={<Profile />} /> },
     ],
   },
 ]);
