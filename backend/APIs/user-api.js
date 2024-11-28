@@ -78,7 +78,7 @@ userApp.post('/registration', expressAsyncHandler(async (req, res) => {
 //User login (d)(D)
 userApp.post('/login', expressAsyncHandler(async(req,res)=>{
     const newUser = req.body;
-    console.log(newUser)
+    // console.log(newUser)
     if (newUser.email=== adminCredentials.email && bcryptjs.compareSync(newUser.password, adminCredentials.password)) {
 
         const token = jwt.sign(
@@ -373,7 +373,7 @@ userApp.get('/comments/:blogID', expressAsyncHandler(async (req, res) => {
 //to get blogs count on a movie by movieid
 userApp.get('/blogcount/:movieid', expressAsyncHandler(async (req, res) =>{
     const movieid = req.params.movieid;
-    console.log(movieid)
+    // console.log(movieid)
     if (!movieid) {
         return res.status(400).send({ message: "movieid parameter is missing" });
     }
@@ -386,7 +386,7 @@ userApp.get('/blogcount/:movieid', expressAsyncHandler(async (req, res) =>{
             { autoCommit: true, outFormat: OracleDB.OUT_FORMAT_OBJECT }
         );
         const blogCount = result.rows[0] || 0;
-        console.log(result.rows[0])
+        // console.log(result.rows[0])
         res.send({ message: "Blog count on a movie", payload: blogCount.C });
     } catch (err) {
         console.error("Error while getting blog count:", err.message);
@@ -462,7 +462,7 @@ userApp.post("/new-blog",verifyToken, expressAsyncHandler(async(req,res)=>{
         res.send({message:"Blog posted successfully!",payload:newBlog});
 
     }catch(err){
-        console.log(err);
+        // console.log(err);
         res.send({message:"Database error while writing new blog", error:err.message});
     } finally{
         if(connection)
@@ -481,7 +481,7 @@ userApp.post("/new-blog",verifyToken, expressAsyncHandler(async(req,res)=>{
             const result = await connection.execute("SELECT * FROM genre",[],{outFormat:OracleDB.OUT_FORMAT_OBJECT});
             res.send({message:"getting all genres",payload:result.rows});
         }catch(err){
-            console.log("error in getting genres", err.message);
+            // console.log("error in getting genres", err.message);
             res.send({message:err.message});
         }finally{
             if(connection){
@@ -744,7 +744,7 @@ userApp.delete("/deleteuser/:userId", verifyToken, isAdmin, expressAsyncHandler(
         // Commit the transaction
         await connection.commit();
 
-        console.log("User and related records deleted successfully");
+        // console.log("User and related records deleted successfully");
         res.send({ message: "User and related records deleted successfully" });
     } catch (err) {
         console.error("Error at deleting user:", err.message);
@@ -761,7 +761,6 @@ function generateUniqueVoteId() {
     const randomPart = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
     return `${prefix}${randomPart}`;
 }
-
 userApp.post("/vote",verifyToken,expressAsyncHandler(async (req, res) => {
         const { voteType, blogId, userId } = req.body;
 
@@ -845,9 +844,6 @@ userApp.post("/vote",verifyToken,expressAsyncHandler(async (req, res) => {
     })
 );
 
-
-
-
 // Get upvotes and downvotes for a blog by ID
 userApp.get('/vote/:blogId', verifyToken, expressAsyncHandler(async (req, res) => {
     const { blogId } = req.params;
@@ -869,6 +865,5 @@ userApp.get('/vote/:blogId', verifyToken, expressAsyncHandler(async (req, res) =
         }
     }
 }));
-
 
 module.exports=userApp;
