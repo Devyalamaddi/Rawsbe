@@ -1,0 +1,79 @@
+/* Base card structure */
+.card {
+    position: relative;
+    perspective: 1000px;
+    overflow: hidden;
+  }
+  
+  .wrapper {
+    position: relative;
+    transition: transform 0.5s ease-in-out, scale 0.5s ease-in-out;
+    transform-style: preserve-3d;
+  }
+  
+  .card:hover .wrapper {
+    transform: rotateY(10deg) rotateX(5deg);
+  }
+  
+  .image {
+    width: 100%;
+    height: 100%;
+    transition: transform 0.5s ease-in-out;
+  }
+  
+  .card:hover .image {
+    transform: scale(1.3); /* Increase image size by 30% */
+  }
+  
+  .title {
+    position: absolute;
+    bottom: 4px;
+    left: 16px;
+    font-size: 1.25rem;
+    font-weight: bold;
+    color: white;
+    transition: background-size 0.5s ease-in-out, transform 0.5s ease-in-out;
+    background: linear-gradient(90deg, #ff7e5f, #feb47b);
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent; /* Text invisible until gradient applied */
+    background-size: 200%;
+  }
+  
+  .card:hover .title {
+    background-size: 400%; /* Expands the gradient effect */
+    font-size: 20px; /* Increases font size on hover */
+    transform: translateY(-10px); /* Slight upward movement on hover */
+    transition: background-size 0.5s ease-in-out, transform 0.5s ease-in-out, font-size 0.5s ease-in-out;
+    padding: 10px;
+    background: linear-gradient(45deg, rgba(109, 7, 146, 0.7), rgba(187, 12, 12, 0.7)); /* Correct gradient definition */
+  }
+  
+  
+  /* Optional pseudo-elements for extra polish */
+  .pseudo-elements::before,
+  .pseudo-elements::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    transition: opacity 0.5s ease-in-out;
+    z-index: 1;
+  }
+  
+  .pseudo-elements::before {
+    background: rgba(255, 255, 255, 0.1); /* Light overlay effect */
+  }
+  
+  .pseudo-elements::after {
+    background: linear-gradient(45deg, rgba(0, 0, 0, 0.538), rgba(0, 0, 0, 0));
+  }
+  
+  .card:hover .pseudo-elements::before,
+  .card:hover .pseudo-elements::after {
+    opacity: 1;
+  }
+  
