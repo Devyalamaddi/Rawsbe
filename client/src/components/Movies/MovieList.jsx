@@ -8,7 +8,13 @@ export default function MovieList() {
   const fetchMovies = async () => {
     try {
       const response = await axios.get("http://localhost:1234/user-api/movies");
-      setMovies(response.data.payload || []);
+      // Sort movies by year in descending order
+      const sortedMovies = (response.data.payload || []).sort(
+        (a, b) => a.YEAR - b.YEAR
+      );
+
+      setMovies(sortedMovies);
+
     } catch (err) {
       console.log("Error while fetching movies", err.message);
     }
@@ -21,7 +27,7 @@ export default function MovieList() {
   return (
     <div className="container mx-auto p-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {movies.map((movie) => (
+        {[...movies].reverse().map((movie) => (
           <MovieCard key={movie.MOVIEID} movie={movie} />
         ))}
       </div>
